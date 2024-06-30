@@ -1,0 +1,181 @@
+﻿@page "/"
+@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+@using TodoList_v1_0.Data
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+<div class="container">
+    <div class="row">
+        <div class="col"></div>
+        <div class="col">
+            <input class="form-control" placeholder="TODO LIST TITLE" style="width: 20rem" @bind="Title" />
+
+            <form>
+                @foreach (var todo in newToDoList.Items)
+                {
+                    @if (todo.IsDone == false)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" @bind="todo.IsDone" type="checkbox" value="" id="flexCheckDefault">
+                            <label class="form-check-label" for="flexCheckDefault">
+                                @todo.Item
+                            </label>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" @bind="todo.IsDone" type="checkbox" value="" id="flexCheckDefault">
+                            <label class="form-check-label" for="flexCheckCheckedDefault" style="color:grey">
+                                @todo.Item
+                            </label>
+                        </div>
+                        /*
+                        <div class="row g-3 align-items-center">
+                        <div class="col-auto">
+                        <input type="checkbox" class="form-check-input" @bind="todo.IsDone" />
+                        </div>
+                        <div class="col-auto">
+                        <input class="form-control" style="color:grey" @bind="todo.Title" />
+                        </div>
+                        </div>
+                        */
+                    }
+                }
+            </form>
+            <br>
+
+            <div>
+                <input class="form-control" placeholder="Add something todo" style="width: 20rem" @bind="newTodoItem" /><br>
+            </div>
+            <div>
+                <button class="btn btn-secondary" @onclick="AddTodo">Add todo</button>
+                <button class="btn btn-dark" @onclick="SaveTodoListAsync">Save</button>
+                <br><br>
+            </div>
+        </div>
+        <div class="col"></div>
+    </div>
+    <div class="row justify-content-md-center">
+        <div class="col-sm-auto">
+            <ColumnTodoLists ColumnNum="0" TodoListsDb="dbToDoLists" TodoListsNew="newTodoLists" />
+        </div>
+        <div class="col-sm-auto">
+            <ColumnTodoLists ColumnNum="1" TodoListsDb="dbToDoLists" TodoListsNew="newTodoLists" />
+        </div>
+        <div class="col-sm-auto">
+            <ColumnTodoLists ColumnNum="2" TodoListsDb="dbToDoLists" TodoListsNew="newTodoLists" />
+        </div>
+    </div>
+</div>
+
+@code
+{
+    private TodoList newToDoList = new();
+    private List<TodoList> dbToDoLists = new();
+    private List<TodoList> newTodoLists = new();
+    private string? Title;
+    private string? newTodoItem;
+    private string? UserId = "empty";
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        var authState = await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+        if (authState.User.Identity is not null && authState.User.Identity.IsAuthenticated)
+        {
+            UserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var query = context.TodoLists
+                        .Where(n => n.UserId == UserId)
+                        .Include(TodoList => TodoList.Items)
+                        .ToList();
+
+            foreach (var todolist in query)
+            {
+                dbToDoLists.Add(todolist);
+            }
+        }
+
+    }
+
+    private void ChangeTodoItemDoneStatus(int TodoItemId)
+    {
+        Console.WriteLine(TodoItemId);
+        /*
+        using var context = DbFactory.CreateDbContext();
+
+        var todoItem = context.TodoItems.Where(n => n.Id == TodoItemId).First();
+        todoItem.IsDone = !todoItem.IsDone;
+        context.SaveChanges();
+    */
+    }
+
+    private void ExposeId(int ID)
+    {
+        using var context = DbFactory.CreateDbContext();
+        var TODOLIST = context.TodoLists.Where(n => n.Id == ID).Include(n => n.Items).First();
+        context.Remove(TODOLIST);
+        context.SaveChanges();
+        TodoList todoList = dbToDoLists.Where(n => n.Id == ID).First();
+        dbToDoLists.Remove(todoList);
+    }
+
+    private void AddTodo()
+    {
+        if (!string.IsNullOrWhiteSpace(newTodoItem))
+        {
+            newToDoList.Items.Add(new TodoItem { Item = newTodoItem });
+            newTodoItem = string.Empty;
+        }
+
+    }
+
+    private async Task SaveTodoListAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        await GetClaimsPrincipalData();
+
+        if (UserId is not "empty")
+        {
+
+            if (Title == null)
+            {
+                newToDoList.Name = "TODO LIST";
+            }
+            else
+            {
+                newToDoList.Name = Title;
+            }
+            newToDoList.TimeOfCreation = DateTime.Now;
+            newToDoList.UserId = UserId;
+            context.Add(newToDoList);
+            await context.SaveChangesAsync();
+            newTodoLists.Add(newToDoList);
+            newToDoList = new();
+            Title = "TODO LIST";
+
+        }
+
+    }
+
+    private async Task GetClaimsPrincipalData()
+    {
+        Console.WriteLine("hello");
+
+        var authState = await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+        if (authState.User.Identity is not null && authState.User.Identity.IsAuthenticated)
+        {
+            UserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        Console.WriteLine(UserId);
+
+    }
+
+}
+

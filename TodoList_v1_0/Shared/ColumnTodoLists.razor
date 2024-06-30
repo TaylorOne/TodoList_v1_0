@@ -1,0 +1,124 @@
+﻿@using TodoList_v1_0.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+@for (int i = 0; i < TodoListsNew.Count; i++)
+{
+    @if (i % 3 == ColumnNum)
+    {
+        <div class="card" style="width: 20rem">
+            <div class="card-body">
+                <h6><b>@TodoListsNew[i].Name</b></h6>
+                @foreach (var todo in TodoListsNew[i].Items)
+                {
+                    @if (todo.IsDone == false)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" @bind="todo.IsDone" type="checkbox" value="" id="flexCheckDefault">
+                            <label class="form-check-label" for="flexCheckDefault">
+                                @todo.Item
+                            </label>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" @bind="todo.IsDone" type="checkbox" value="" id="flexCheckDefault">
+                            <label class="form-check-label" for="flexCheckCheckedDefault" style="color:grey">
+                                @todo.Item
+                            </label>
+                        </div>
+                    }
+
+                    /*
+                    <li class="list-group-item">
+                    <input type="checkbox" class="form-check-input me-1" @bind="todo.IsDone" />
+                    @todo.Title
+                    </li>
+                    */
+                }
+            </div>
+        </div>
+        <br>
+        <br>
+    }
+
+}
+
+@for (int i = 0; i < TodoListsDb.Count; i++)
+{
+    if (i % 3 == ColumnNum)
+    {
+        var todoListId = TodoListsDb[i].Id;
+        <div class="card" style="width: 20rem">
+            <div class="card-body">
+                <h6><b>@TodoListsDb[i].Name</b></h6>
+                @foreach (var todo in TodoListsDb[i].Items)
+                {
+                    @if (todo.IsDone == false)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" @bind="todo.IsDone" @onclick="@(e => ChangeTodoItemDoneStatus(todo.Id))" type="checkbox" value="" id="flexCheckDefault">
+                            <label class="form-check-label" for="flexCheckDefault">
+                                @todo.Item
+                            </label>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" @bind="todo.IsDone" @onclick="@(e => ChangeTodoItemDoneStatus(todo.Id))" type="checkbox" value="" id="flexCheckDefault">
+                            <label class="form-check-label" for="flexCheckCheckedDefault" style="color:grey">
+                                @todo.Item
+                            </label>
+                        </div>
+                    }
+                }
+                <br>
+                <button type="button" class="btn-close" aria-label="Close" @onclick="@(e => DeleteTodoList(todoListId))"></button>
+            </div>
+        </div>
+        <br>
+        <br>
+    }
+
+}
+
+
+@code
+{
+    public string style = "visibility: hidden";
+
+    [Parameter]
+    public int ColumnNum { get; set; }
+    [Parameter]
+    public List<TodoList> TodoListsNew { get; set; } = new();
+    [Parameter]
+    public List<TodoList> TodoListsDb { get; set; } = new();
+
+
+    private void ChangeTodoItemDoneStatus(int TodoItemId)
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        var todoItem = context.TodoItems.Where(n => n.Id == TodoItemId).First();
+        todoItem.IsDone = !todoItem.IsDone;
+        context.SaveChanges();
+    }
+
+    private async Task DeleteTodoList(int ID)
+    {
+        using var context = DbFactory.CreateDbContext();
+        var TODOLIST = await context.TodoLists
+                .Where(n => n.Id == ID)
+                .Include(n => n.Items)
+                .FirstAsync();
+        context.Remove(TODOLIST);
+        context.SaveChanges();
+        TodoList todoList = TodoListsDb.Where(n => n.Id == ID).First();
+        Console.WriteLine(todoList.Name);
+        TodoListsDb.Remove(todoList);
+        Console.WriteLine(todoList.Name);
+    }
+
+}
