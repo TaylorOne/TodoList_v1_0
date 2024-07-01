@@ -8,12 +8,6 @@ using TodoList_v1_0.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-SqlConnectionStringBuilder sBuilder = new SqlConnectionStringBuilder();
-sBuilder.DataSource = ".\\MSSQLSERVER2019";
-sBuilder.InitialCatalog = "todolists";
-sBuilder.UserID = "jordon";
-sBuilder.Password = "*fz71G6g1";
-
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
